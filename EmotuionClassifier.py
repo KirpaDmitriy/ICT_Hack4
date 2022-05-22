@@ -19,7 +19,7 @@ class Classifier:
 
     def to_integer(self, str_time):
         dt_time = datetime.datetime.strptime(str_time, '%S/%M/%H/%d/%m/%Y')
-        return 10000000000 * dt_time.year + 100000000 * dt_time.month + 1000000 * dt_time.day + 10000 * dt_time.hour + 100 * dt_time.minute + dt_time.second
+        return 60 * 60 * 24 * 31 * 365 * dt_time.year + 60 * 60 * 24 * 31 * dt_time.month + 60 * 60 * 24 * dt_time.day + 60 * 60 * dt_time.hour + 60 * dt_time.minute + dt_time.second
 
     def get_sent(self, text):
         sents = self.pred([text])[0]
@@ -66,6 +66,8 @@ class Classifier:
         plt.plot('Time', 'fear_level', data=fear_level, marker='o', color='brown', linewidth=2)
         plt.plot('Time', 'anger_level', data=anger_level, marker='o', color='black', linewidth=2)
         plt.plot('Time', 'surprise_level', data=surprise_level, marker='o', color='orange', linewidth=2)
+
+        plt.legend(['sadness', 'love', 'joy', 'fear', 'anger', 'surprise'])
 
         fig.savefig(f'img/{str(user_id)}.png')
 
@@ -118,3 +120,65 @@ class Classifier:
                         random.choice([f'Your {feeling} seems to be unusual. Go for a walk and enjoy the life',
                                        f'{feeling} is your enemy!']))
         return recommends
+
+    def dist_from_freq(self, messages, messages1):
+        from scipy.fft import fft
+        ys, xs = [], []
+        for date in messages:
+            xs.append(self.to_integer(date))
+            ys.append(self.get_sent(messages[date]))
+
+        datasets_dict = {}
+        plot_dicts = []
+
+        for emotion in list(ys[0].keys()):
+            datasets_dict[emotion] = []
+            for point in ys:
+                datasets_dict[emotion].append(point[emotion])
+
+        for emotion in datasets_dict:
+            plot_dicts.append({'Time': xs, f'{emotion}_level': datasets_dict[emotion]})
+        print(plot_dicts[3])
+        print(datasets_dict)
+        x, y = plot_dicts[3]['Time'], plot_dicts[3]['anger_level']
+        yf = fft(y)
+
+        ys1, xs1 = [], []
+        for date in messages1:
+            xs1.append(self.to_integer(date))
+            ys1.append(self.get_sent(messages1[date]))
+
+        datasets_dict1 = {}
+        plot_dicts1 = []
+
+        for emotion in list(ys1[0].keys()):
+            datasets_dict1[emotion] = []
+            for point in ys1:
+                datasets_dict1[emotion].append(point[emotion])
+
+        for emotion in datasets_dict1:
+            plot_dicts1.append({'Time': xs1, f'{emotion}_level': datasets_dict1[emotion]})
+
+        x1, y1 = plot_dicts1[3]['Time'], plot_dicts1[3]['anger_level']
+        yf1 = fft(y1)
+
+        return np.mean(np.diff(np.array(yf), n=len(np.array(yf)) - 1) - np.diff(np.array(yf1), n=len(np.array(yf1)) - 1))
+
+    def get_closest_users(self, users, user, n_users=10):
+        if len(user.results) > 0:
+            n_users = min(n_users, len(users))
+            top = []
+            sou = {}
+            for user_id in users:
+                if user_id != 0 and user_id != user.session:
+                    user1 = users[user_id]
+                    d = self.dist_from_freq(user.results, user1.results)
+                    if d not in sou:
+                        sou[d] = []
+                    sou[d].append(user1)
+            for i in range(min(n_users, len(sorted(list(sou.keys()), reverse=True)))):
+                for u in sou[sorted(list(sou.keys()), reverse=True)[i]]:
+                    if len(top) < n_users:
+                        top.append(u)
+            return top
+        return None

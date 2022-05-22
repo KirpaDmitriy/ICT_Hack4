@@ -9,13 +9,14 @@ clf = Classifier()
 
 class User(object):
 
-    def __init__(self, message_chat_id):
+    def __init__(self, message_chat_id, username):
         self.results = {}  # Временные записи состояния
         self.session = message_chat_id  # Id чата
         self.temper = np.array([0, 0, 0, 0])  # Темперамент
         self.emotions = None  # Эмоции которые ощущает пользователь прямо сейчас
         self.chat_state = 1  # Состояние общения в текущий момент
         self.additional_chat_state = None
+        self.username = username
 
     def get_message(self):
         return self.message
@@ -23,7 +24,7 @@ class User(object):
     def get_results(self):
         return self.results
 
-    def get_my_average(self, from_date='01/01/01/01/01/1990'):
+    def get_my_average(self, from_date='01/01/01/01/01/1980'):
         from_date = datetime.datetime.strptime(from_date, '%S/%M/%H/%d/%m/%Y')
         most_current_num = 0
         emotions_average = {'sadness': 0,
@@ -52,5 +53,5 @@ class User(object):
         self.results[date] = "Result"
 
     def __repr__(self):
-        return json.JSONEncoder()
+        return self.username
 
